@@ -19,12 +19,13 @@
 
 # Plugin specific
 import NavigationInstance
-from EventDispatcher import dispatchEvent
+from .EventDispatcher import dispatchEvent
 from enigma import eTimer
 from . import printToConsole
 
 # Event Types
 RECORD_FINISHED = "recordFinished"
+
 
 class RecordNotification():
 
@@ -56,7 +57,6 @@ class RecordNotification():
 		if self.forceBindRecordTimer is not None and self.forceBindRecordTimer.isActive():
 			return True
 		return False
-
 
 	'''
 	Private Methods
@@ -94,4 +94,3 @@ class RecordNotification():
 			printToConsole("[RecordNotification] record end!")
 			dispatchEvent(RECORD_FINISHED)
 			#del timer
-

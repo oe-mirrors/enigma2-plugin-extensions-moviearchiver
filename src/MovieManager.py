@@ -26,13 +26,13 @@ import os
 
 from time import time
 from pipes import quote
-from _collections import deque
+from collections import deque
 from enigma import eConsoleAppContainer
 import NavigationInstance
 
 from Components.config import config
-from DiskUtils import pathIsWriteable, reachedLimit, getFiles, checkReachedLimitIfMoveFile, mountpoint, getFilesWithNameKey, getFileHash
-from EventDispatcher import dispatchEvent
+from .DiskUtils import pathIsWriteable, reachedLimit, getFiles, checkReachedLimitIfMoveFile, mountpoint, getFilesWithNameKey, getFileHash
+from .EventDispatcher import dispatchEvent
 from . import _, printToConsole, getSourcePathValue, getTargetPathValue
 
 # Events
@@ -64,7 +64,7 @@ class MovieManager(object):
         '''
         self.execCommand = ""
         self.executionQueueList = deque()
-        self.executionQueueListInProgress = False;
+        self.executionQueueListInProgress = False
         self.console = eConsoleAppContainer()
         self.console.appClosed.append(self.__runFinished)
 
@@ -149,17 +149,17 @@ class MovieManager(object):
             return
 
         #check if some files to archive available
-        sourceFiles = getFilesWithNameKey(sourcePath, excludedDirNames = DEFAULT_EXCLUDED_DIRNAMES, excludeDirs = config.plugins.MovieArchiver.excludeDirs.getValue())
+        sourceFiles = getFilesWithNameKey(sourcePath, excludedDirNames=DEFAULT_EXCLUDED_DIRNAMES, excludeDirs=config.plugins.MovieArchiver.excludeDirs.getValue())
         if sourceFiles is None:
             dispatchEvent(INFO_MSG, _("No files for backup found."), 10)
             return
 
         dispatchEvent(INFO_MSG, _("Backup Archive. Synchronization started"), 5)
 
-        targetFiles = getFilesWithNameKey(targetPath, excludedDirNames = DEFAULT_EXCLUDED_DIRNAMES)
+        targetFiles = getFilesWithNameKey(targetPath, excludedDirNames=DEFAULT_EXCLUDED_DIRNAMES)
 
         # determine movies to sync and add to queue
-        for sFileName,sFile in sourceFiles.iteritems():
+        for sFileName, sFile in sourceFiles.iteritems():
             if sFileName not in targetFiles:
                 printToConsole("file is new. Add To Archive: " + sFile)
                 self.addFileToBackupQueue(sFile)
@@ -180,7 +180,7 @@ class MovieManager(object):
             subFolderPath = sourceFile.replace(getSourcePathValue(), "")
             targetPathWithSubFolder = os.path.join(targetPath, subFolderPath)
 
-            newExecCommand = 'cp "'+ sourceFile +'" "'+ targetPathWithSubFolder +'"'
+            newExecCommand = 'cp "' + sourceFile + '" "' + targetPathWithSubFolder + '"'
 
             # create folders if doesnt exists
             folder = os.path.dirname(targetPathWithSubFolder)
@@ -194,22 +194,22 @@ class MovieManager(object):
         if os.path.isdir(targetPath) and os.path.dirname(sourceMovie) != targetPath and pathIsWriteable(targetPath):
             fileNameWithoutExtension = os.path.splitext(sourceMovie)[0]
 
-            newExecCommand = 'mv "'+ fileNameWithoutExtension +'."* "'+ targetPath +'"'
+            newExecCommand = 'mv "' + fileNameWithoutExtension + '."* "' + targetPath + '"'
 
             self.__addExecCommandToArchiveQueue(newExecCommand)
 
     def execQueue(self):
         try:
             if len(self.executionQueueList) > 0:
-                self.executionQueueListInProgress = True;
+                self.executionQueueListInProgress = True
 
                 self.execCommand = self.executionQueueList.popleft()
 
                 self.console.execute("sh -c " + self.execCommand)
 
                 printToConsole("execQueue: Move Movie '" + self.execCommand + "'")
-        except Exception, e:
-            self.__clearExecutionQueueList();
+        except Exception as e:
+            self.__clearExecutionQueueList()
             printToConsole("execQueue exception:\n" + str(e))
 
     def isRecordingStartInNextTime(self):
@@ -221,7 +221,6 @@ class MovieManager(object):
         else:
             return True
 
-
     '''
     Private Methods
     '''
@@ -229,7 +228,7 @@ class MovieManager(object):
     def __clearExecutionQueueList(self):
         self.execCommand = ""
         self.executionQueueList = deque()
-        self.executionQueueListInProgress = False;
+        self.executionQueueListInProgress = False
 
     def __runFinished(self, retval=None):
         try:
@@ -239,11 +238,11 @@ class MovieManager(object):
                 self.execQueue()
             else:
                 printToConsole("Queue finished!")
-                self.executionQueueListInProgress = False;
+                self.executionQueueListInProgress = False
                 dispatchEvent(QUEUE_FINISHED, True)
 
-        except Exception, e:
-            self.__clearExecutionQueueList();
+        except Exception as e:
+            self.__clearExecutionQueueList()
 
             printToConsole("runFinished exception:\n" + str(e))
 
@@ -254,5 +253,3 @@ class MovieManager(object):
         #if self.execCommand != execCommandToAdd and self.executionQueueList.count(execCommandToAdd) == 0:
         if self.execCommand != execCommandToAdd and execCommandToAdd not in self.executionQueueList:
             self.executionQueueList.append(quote(execCommandToAdd))
-
-

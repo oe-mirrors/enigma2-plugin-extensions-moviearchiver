@@ -41,6 +41,7 @@ def getOldestFile(path, fileExtensions=None):
 
     return oldestFile
 
+
 def getFiles(path, fileExtensions=None):
     '''
     get file list as an array
@@ -59,10 +60,12 @@ def getFiles(path, fileExtensions=None):
     files.sort(key=lambda s: os.path.getmtime(os.path.join(path, s)))
     return files
 
+
 def getFilesFromPath(path):
     return [os.path.join(path, fname) for fname in os.listdir(path)]
 
-def getFilesWithNameKey(path, excludedDirNames = None, excludeDirs = None):
+
+def getFilesWithNameKey(path, excludedDirNames=None, excludeDirs=None):
     '''
     get recursive all files from given path
     '''
@@ -96,6 +99,7 @@ def getFilesWithNameKey(path, excludedDirNames = None, excludeDirs = None):
 
     return rs
 
+
 def pathIsWriteable(path):
     if os.path.isfile(path):
         path = os.path.dirname(path)
@@ -104,12 +108,16 @@ def pathIsWriteable(path):
     else:
         return False
 
+
 def ismount(path):
     return os.path.isdir(mountpoint(path))
 
+
 def mountpoint(path, first=True):
-    if first: path = os.path.realpath(path)
-    if os.path.ismount(path) or len(path)==0: return path
+    if first:
+        path = os.path.realpath(path)
+    if os.path.ismount(path) or len(path) == 0:
+        return path
     return mountpoint(os.path.dirname(path), False)
 
 
@@ -124,28 +132,32 @@ def removeSymbolicLinks(pathList):
 
 ###############################
 
+
 def getFreeDiskspace(path):
     # Check free space on path
     if os.path.exists(path):
         stat = os.statvfs(path)
-        free = (stat.f_bavail if stat.f_bavail!=0 else stat.f_bfree) * stat.f_bsize / 1024 / 1024 # MB
+        free = (stat.f_bavail if stat.f_bavail != 0 else stat.f_bfree) * stat.f_bsize / 1024 / 1024 # MB
         return free
     return 0 #maybe call exception
 
+
 def getFreeDiskspaceText(path):
     free = getFreeDiskspace(path)
-    if free >= 10*1024:    #MB
-        free = "%d GB" %(free/1024)
+    if free >= 10 * 1024:    #MB
+        free = "%d GB" % (free / 1024)
     else:
-        free = "%d MB" %(free)
+        free = "%d MB" % (free)
     return free
+
 
 def reachedLimit(path, limit):
     free = getFreeDiskspace(path)
-    if limit > (free/1024): #GB
+    if limit > (free / 1024): #GB
         return True
     else:
         return False
+
 
 def checkReachedLimitIfMoveFile(path, limit, moviesFileSize):
     freeDiskSpace = getFreeDiskspace(path)
@@ -155,6 +167,7 @@ def checkReachedLimitIfMoveFile(path, limit, moviesFileSize):
         return True
     else:
         return False
+
 
 def getFileHash(file, factor=10, sizeToSkip=104857600):
     '''
@@ -200,10 +213,10 @@ def getFileHash(file, factor=10, sizeToSkip=104857600):
     return hashStr
     '''
 
-
     '''
     Private Methods
     '''
+
 
 def __filterFileListByFileExtension(files, fileExtensions):
     '''

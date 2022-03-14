@@ -21,7 +21,7 @@
 #
 #######################################################################
 
-from Components.config import config, configfile, ConfigSubsection, getConfigListEntry, ConfigSelection, ConfigNumber, ConfigText, ConfigInteger, ConfigYesNo, ConfigLocations
+from Components.config import config, ConfigSubsection, ConfigNumber, ConfigText, ConfigYesNo, ConfigLocations
 from Tools.Directories import resolveFilename, SCOPE_HDD, SCOPE_PLUGINS
 
 from Components.Language import language
@@ -34,8 +34,10 @@ import gettext
 PluginLanguageDomain = "MovieArchiver"
 PluginLanguagePath = "Extensions/MovieArchiver/locale"
 
+
 def localeInit():
     gettext.bindtextdomain(PluginLanguageDomain, resolveFilename(SCOPE_PLUGINS, PluginLanguagePath))
+
 
 def _(txt):
     if gettext.dgettext(PluginLanguageDomain, txt):
@@ -43,14 +45,17 @@ def _(txt):
     else:
         return gettext.gettext(txt)
 
-language.addCallback(localeInit())
+localeInit()
+language.addCallback(localeInit)
 
 #############################################################
+
 
 def printToConsole(msg):
-    print "[MovieArchiver] " + msg
+    print("[MovieArchiver] %s" % msg)
 
 #############################################################
+
 
 # Define Settings Entries
 config.plugins.MovieArchiver = ConfigSubsection()
@@ -81,8 +86,11 @@ config.plugins.MovieArchiver.targetLimit = ConfigNumber(default=30)
 
 #############################################################
 # Helper Functions
+
+
 def getSourcePath():
     return config.plugins.MovieArchiver.sourcePath
+
 
 def getSourcePathValue():
     return getSourcePath().getValue()
@@ -90,6 +98,7 @@ def getSourcePathValue():
 
 def getTargetPath():
     return config.plugins.MovieArchiver.targetPath
+
 
 def getTargetPathValue():
     return getTargetPath().getValue()

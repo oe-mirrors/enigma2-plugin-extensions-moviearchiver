@@ -22,12 +22,13 @@
 #######################################################################
 
 from Components.config import config
-from MovieManager import MovieManager, QUEUE_FINISHED, INFO_MSG
-from RecordNotification import RecordNotification, RECORD_FINISHED
-from EventDispatcher import addEventListener, removeEventListener
+from .MovieManager import MovieManager, QUEUE_FINISHED, INFO_MSG
+from .RecordNotification import RecordNotification, RECORD_FINISHED
+from .EventDispatcher import addEventListener, removeEventListener
 from Screens.MessageBox import MessageBox
 from . import printToConsole
 from Tools import Notifications
+
 
 class NotificationController(object):
     '''
@@ -65,7 +66,7 @@ class NotificationController(object):
         removeEventListener(RECORD_FINISHED, self.__recordFinishedHandler)
         self.recordNotification.stopTimer()
 
-    def startArchiving(self, showUIMessage = False):
+    def startArchiving(self, showUIMessage=False):
         self.showUIMessage = showUIMessage
 
         if self.showUIMessage == True:
@@ -87,13 +88,11 @@ class NotificationController(object):
         '''
         return self.movieManager.running()
 
-
     def showMessage(self, msg, timeout=10):
         if self.view is not None:
             self.view.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout)
         else:
             Notifications.AddNotification(MessageBox, msg, type=MessageBox.TYPE_INFO, timeout=timeout)
-
 
     '''
     Private Methods
@@ -109,10 +108,8 @@ class NotificationController(object):
         else:
             self.showMessage(_("MovieArchiver: Movies already archived."), 5)
 
-    def __infoMsgHandler(self, msg, timeout = 10):
+    def __infoMsgHandler(self, msg, timeout=10):
         if self.showUIMessage == True:
             self.showMessage(msg, timeout)
         else:
             printToConsole(msg)
-
-

@@ -28,12 +28,12 @@ from Components.config import config, configfile, getConfigListEntry, ConfigLoca
 from Components.ConfigList import ConfigListScreen
 from Components.Sources.StaticText import StaticText
 
-from MovieManager import QUEUE_FINISHED
-from DiskUtils import pathIsWriteable
+from .MovieManager import QUEUE_FINISHED
+from .DiskUtils import pathIsWriteable
 from NotificationController import NotificationController
 from . import _, getSourcePath, getTargetPath
-from ExcludeDirsView import ExcludeDirsView
-from EventDispatcher import addEventListener
+from .ExcludeDirsView import ExcludeDirsView
+from .EventDispatcher import addEventListener
 
 
 #######################################################################
@@ -59,7 +59,7 @@ class MovieArchiverView(ConfigListScreen, Screen):
   </screen>
 """
 
-    def __init__(self, session, args = None):
+    def __init__(self, session, args=None):
         Screen.__init__(self, session)
 
         getSourcePath().addNotifier(self.checkReadWriteDir, initial_call=False, immediate_feedback=False)
@@ -70,11 +70,11 @@ class MovieArchiverView(ConfigListScreen, Screen):
         ConfigListScreen.__init__(
             self,
             self.getMenuItemList(),
-            session = session,
-            on_change = self.__changedEntry
+            session=session,
+            on_change=self.__changedEntry
         )
 
-        self.notificationController = NotificationController.getInstance();
+        self.notificationController = NotificationController.getInstance()
         self.notificationController.setView(self)
 
         # Define Actions
@@ -114,7 +114,7 @@ class MovieArchiverView(ConfigListScreen, Screen):
         menuList.append(getConfigListEntry(_("Movie Folder Limit (in GB)"), config.plugins.MovieArchiver.sourceLimit, _("Movie Folder free diskspace limit in GB. If free diskspace reach under this limit, the MovieArchiver will move old records to the archive")))
 
         if config.plugins.MovieArchiver.backup.getValue() == True:
-            menuList.append(getConfigListEntry(_("Exclude folders"),  config.plugins.MovieArchiver.excludeDirs, _("Selected Directories wont be backuped.")))
+            menuList.append(getConfigListEntry(_("Exclude folders"), config.plugins.MovieArchiver.excludeDirs, _("Selected Directories wont be backuped.")))
 
         menuList.append(getConfigListEntry(_("-------------------------------------------------------------"), ))
         menuList.append(getConfigListEntry(_("Archive Folder"), getTargetPath(), _("Target folder / HDD where the movies will moved or backuped.\n\nPress 'Ok' to open path selection view")))
@@ -132,7 +132,7 @@ class MovieArchiverView(ConfigListScreen, Screen):
             configElement.value = configElement.lastValue
             self.session.open(
                 MessageBox,
-                _("The directory %s is not writable.\nMake sure you select a writable directory instead.")%dirName,
+                _("The directory %s is not writable.\nMake sure you select a writable directory instead.") % dirName,
                 MessageBox.TYPE_ERROR
             )
             return False
@@ -219,9 +219,8 @@ class MovieArchiverView(ConfigListScreen, Screen):
             MovieLocationBox,
             _("Choose folder"),
             self.getCurrent().getValue(),
-            minFree = 100
+            minFree=100
         )
-
 
     '''
     Private Methods
@@ -258,4 +257,3 @@ class MovieArchiverView(ConfigListScreen, Screen):
 
     def __onClose(self):
         self.notificationController.setView(None)
-

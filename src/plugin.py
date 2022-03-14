@@ -23,10 +23,11 @@
 
 from Plugins.Plugin import PluginDescriptor
 
-import sys, traceback
+import sys
+import traceback
 
-from MovieArchiverView import MovieArchiverView
-from NotificationController import NotificationController
+from .MovieArchiverView import MovieArchiverView
+from .NotificationController import NotificationController
 from . import _, printToConsole
 
 notificationController = None
@@ -34,6 +35,8 @@ notificationController = None
 #############################################################
 
 # Autostart
+
+
 def autostart(reason, **kwargs):
 	global notificationController
 	# Startup
@@ -41,7 +44,7 @@ def autostart(reason, **kwargs):
 		try:
 			notificationController = NotificationController.getInstance()
 			notificationController.start()
-		except Exception, e:
+		except Exception as e:
 			printToConsole("Autostart exception " + str(e))
 			exc_type, exc_value, exc_traceback = sys.exc_info()
 			traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stdout)
@@ -55,12 +58,14 @@ def autostart(reason, **kwargs):
 
 #############################################################
 
+
 def main(session, **kwargs):
 	session.open(MovieArchiverView)
 
+
 def Plugins(**kwargs):
 	pluginList = [
-		PluginDescriptor(where = PluginDescriptor.WHERE_AUTOSTART, fnc=autostart, needsRestart=False),
-		PluginDescriptor(name="MovieArchiver", description=_("Archive or backup your movies"), where = PluginDescriptor.WHERE_PLUGINMENU, icon="plugin.png", fnc=main, needsRestart = False)
+		PluginDescriptor(where=PluginDescriptor.WHERE_AUTOSTART, fnc=autostart, needsRestart=False),
+		PluginDescriptor(name="MovieArchiver", description=_("Archive or backup your movies"), where=PluginDescriptor.WHERE_PLUGINMENU, icon="plugin.png", fnc=main, needsRestart=False)
 	]
 	return pluginList

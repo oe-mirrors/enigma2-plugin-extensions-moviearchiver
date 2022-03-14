@@ -27,11 +27,12 @@ from Components.ActionMap import ActionMap
 from Components.config import config
 from Components.Sources.StaticText import StaticText
 from Components.FileList import MultiFileSelectList
-from DiskUtils import removeSymbolicLinks
+from .DiskUtils import removeSymbolicLinks
 
 from . import _, getSourcePathValue
 
 #######################################################################
+
 
 class ExcludeDirsView(Screen):
     skin = """
@@ -45,7 +46,6 @@ class ExcludeDirsView(Screen):
             <eLabel position="320,360" size="5,40" backgroundColor="#e5dd00" />
         </screen>"""
 
-
     def __init__(self, session):
         Screen.__init__(self, session)
         self["key_red"] = StaticText(_("Cancel"))
@@ -53,7 +53,7 @@ class ExcludeDirsView(Screen):
         self["key_yellow"] = StaticText()
 
         self.excludedDirs = config.plugins.MovieArchiver.excludeDirs.getValue()
-        self.dirList = MultiFileSelectList(self.excludedDirs, getSourcePathValue(), showFiles = False)
+        self.dirList = MultiFileSelectList(self.excludedDirs, getSourcePathValue(), showFiles=False)
         self["excludeDirList"] = self.dirList
 
         self["actions"] = ActionMap(["DirectionActions", "OkCancelActions", "ShortcutActions"],
