@@ -89,7 +89,7 @@ msgstr ""
 
 #: MovieArchiverView.py:77
 msgid ""
-"Target folder / HDD where the movies will moved or backupd.\n"
+"Target folder / HDD where the movies will moved or backuped.\n"
 "\n"
 "Press Ok to open path selection view"
 msgstr ""
