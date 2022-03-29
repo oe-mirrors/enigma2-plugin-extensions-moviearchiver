@@ -21,208 +21,208 @@
 #
 #######################################################################
 
-import os
+from os import path, listdir, walk, access, W_OK, statvfs, stat
 
 
-def getOldestFile(path, fileExtensions=None):
-    '''
-    get oldest file from folder
+def getOldestFile(mediapath, fileExtensions=None):
+	'''
+	get oldest file from folder
 
-    fileExtensions as tuple. example: ('.txt', '.png')
-    '''
-    files = getFilesFromPath(path)
+	fileExtensions as tuple. example: ('.txt', '.png')
+	'''
+	files = getFilesFromPath(mediapath)
 
-    if not files:
-        return None
+	if not files:
+		return None
 
-    files = __filterFileListByFileExtension(files, fileExtensions)
+	files = __filterFileListByFileExtension(files, fileExtensions)
 
-    oldestFile = min(files, key=os.path.getmtime)
+	oldestFile = min(files, key=mediapath.getmtime)
 
-    return oldestFile
-
-
-def getFiles(path, fileExtensions=None):
-    '''
-    get file list as an array
-    sorted by date.
-    The oldest first
-
-    fileExtensions as tuple. example: ('.txt', '.png')
-    '''
-    files = getFilesFromPath(path)
-
-    if not files:
-        return None
-
-    files = __filterFileListByFileExtension(files, fileExtensions)
-
-    files.sort(key=lambda s: os.path.getmtime(os.path.join(path, s)))
-    return files
+	return oldestFile
 
 
-def getFilesFromPath(path):
-    return [os.path.join(path, fname) for fname in os.listdir(path)]
+def getFiles(mediapath, fileExtensions=None):
+	'''
+	get file list as an array
+	sorted by date.
+	The oldest first
+
+	fileExtensions as tuple. example: ('.txt', '.png')
+	'''
+	files = getFilesFromPath(mediapath)
+
+	if not files:
+		return None
+
+	files = __filterFileListByFileExtension(files, fileExtensions)
+
+	files.sort(key=lambda s: path.getmtime(path.join(mediapath, s)))
+	return files
 
 
-def getFilesWithNameKey(path, excludedDirNames=None, excludeDirs=None):
-    '''
-    get recursive all files from given path
-    '''
-    rs = {}
-    for dirPath, dirNames, fileNames in os.walk(path):
-        for fileName in fileNames:
-            # skip, if dirname is found in excludedDirNames
-            if excludedDirNames is not None and os.path.basename(dirPath) in excludedDirNames:
-                continue
-
-            fullFilePath = os.path.join(dirPath, fileName)
-
-            skipFile = False
-
-            if dirPath.endswith("/"):
-                pathToCheck = dirPath
-            else:
-                pathToCheck = dirPath + "/"
-
-            # skip, if path found in excludeDirs
-            if excludeDirs is not None:
-                for excludeDir in excludeDirs:
-                    if pathToCheck[:len(excludeDir)] == excludeDir:
-                        skipFile = True
-                        break
-
-            if skipFile == True:
-                continue
-
-            rs[os.path.join(dirPath.replace(path, ""), fileName)] = fullFilePath
-
-    return rs
+def getFilesFromPath(mediapath):
+	return [path.join(pathmediapath, fname) for fname in listdir(mediapath)]
 
 
-def pathIsWriteable(path):
-    if os.path.isfile(path):
-        path = os.path.dirname(path)
-    if os.path.isdir(path) and ismount(path) and os.access(path, os.W_OK):
-        return True
-    else:
-        return False
+def getFilesWithNameKey(mediapath, excludedDirNames=None, excludeDirs=None):
+	'''
+	get recursive all files from given path
+	'''
+	rs = {}
+	for dirPath, dirNames, fileNames in walk(mediapath):
+		for fileName in fileNames:
+			# skip, if dirname is found in excludedDirNames
+			if excludedDirNames is not None and path.basename(dirPath) in excludedDirNames:
+				continue
+
+			fullFilePath = path.join(dirPath, fileName)
+
+			skipFile = False
+
+			if dirPath.endswith("/"):
+				pathToCheck = dirPath
+			else:
+				pathToCheck = dirPath + "/"
+
+			# skip, if path found in excludeDirs
+			if excludeDirs is not None:
+				for excludeDir in excludeDirs:
+					if pathToCheck[:len(excludeDir)] == excludeDir:
+						skipFile = True
+						break
+
+			if skipFile == True:
+				continue
+
+			rs[path.join(dirPath.replace(mediapath, ""), fileName)] = fullFilePath
+
+	return rs
 
 
-def ismount(path):
-    return os.path.isdir(mountpoint(path))
+def pathIsWriteable(mediapath):
+	if path.isfile(mediapath):
+		mediapath = path.dirname(mediapath)
+	if path.isdir(mediapath) and ismount(mediapath) and access(mediapath, W_OK):
+		return True
+	else:
+		return False
 
 
-def mountpoint(path, first=True):
-    if first:
-        path = os.path.realpath(path)
-    if os.path.ismount(path) or len(path) == 0:
-        return path
-    return mountpoint(os.path.dirname(path), False)
+def ismount(mediapath):
+	return path.isdir(mountpoint(mediapath))
+
+
+def mountpoint(mediapath, first=True):
+	if first:
+		mediapath = path.realpath(mediapath)
+	if path.ismount(mediapath) or len(mediapath) == 0:
+		return mediapath
+	return mountpoint(path.dirname(mediapath), False)
 
 
 def removeSymbolicLinks(pathList):
-    tmpExcludedDirs = []
+	tmpExcludedDirs = []
 
-    for folder in pathList:
-        if os.path.islink(folder) == False:
-            tmpExcludedDirs.append(folder)
+	for folder in pathList:
+		if path.islink(folder) == False:
+			tmpExcludedDirs.append(folder)
 
-    return tmpExcludedDirs
+	return tmpExcludedDirs
 
 ###############################
 
 
-def getFreeDiskspace(path):
-    # Check free space on path
-    if os.path.exists(path):
-        stat = os.statvfs(path)
-        free = (stat.f_bavail if stat.f_bavail != 0 else stat.f_bfree) * stat.f_bsize / 1024 / 1024 # MB
-        return free
-    return 0 #maybe call exception
+def getFreeDiskspace(mediapath):
+	# Check free space on path
+	if path.exists(mediapath):
+		stat = statvfs(mediapath)
+		free = (stat.f_bavail if stat.f_bavail != 0 else stat.f_bfree) * stat.f_bsize // 1024 // 1024 # MB
+		return free
+	return 0 #maybe call exception
 
 
-def getFreeDiskspaceText(path):
-    free = getFreeDiskspace(path)
-    if free >= 10 * 1024:    #MB
-        free = "%d GB" % (free / 1024)
-    else:
-        free = "%d MB" % (free)
-    return free
+def getFreeDiskspaceText(mediapath):
+	free = getFreeDiskspace(mediapath)
+	if free >= 10 * 1024:    #MB
+		free = "%d GB" % (free // 1024)
+	else:
+		free = "%d MB" % (free)
+	return free
 
 
-def reachedLimit(path, limit):
-    free = getFreeDiskspace(path)
-    if limit > (free / 1024): #GB
-        return True
-    else:
-        return False
+def reachedLimit(mediapath, limit):
+	free = getFreeDiskspace(mediapath)
+	if limit > (free // 1024): #GB
+		return True
+	else:
+		return False
 
 
-def checkReachedLimitIfMoveFile(path, limit, moviesFileSize):
-    freeDiskSpace = getFreeDiskspace(path)
-    limitInMB = limit * 1024
+def checkReachedLimitIfMoveFile(mediapath, limit, moviesFileSize):
+	freeDiskSpace = getFreeDiskspace(mediapath)
+	limitInMB = limit * 1024
 
-    if (freeDiskSpace + moviesFileSize) >= limitInMB:
-        return True
-    else:
-        return False
+	if (freeDiskSpace + moviesFileSize) >= limitInMB:
+		return True
+	else:
+		return False
 
 
 def getFileHash(file, factor=10, sizeToSkip=104857600):
-    '''
-    factor, if size is higher, it is faster but need more ram
-    sizeToSkip 104857600 = 100mb
-    '''
-    # currently, we check only the fileSize because opening
-    # files and creating hash are to slow
-    return str(os.stat(file).st_size)
+	'''
+	factor, if size is higher, it is faster but need more ram
+	sizeToSkip 104857600 = 100mb
+	'''
+	# currently, we check only the fileSize because opening
+	# files and creating hash are to slow
+	return str(stat(file).st_size)
 
-    '''
-    filehash = hashlib.md5()
+	'''
+	filehash = hashlib.md5()
 
-    # this size will stored in ram. and not the whole file
-    blockSizeToRead = filehash.block_size * (2**factor)
+	# this size will stored in ram. and not the whole file
+	blockSizeToRead = filehash.block_size * (2**factor)
 
-    # we only want this 5mb for creating an md5 string
-    sizeToRead = 5242880
+	# we only want this 5mb for creating an md5 string
+	sizeToRead = 5242880
 
-    f = open(file, 'rb')
-    f.seek(sizeToSkip, 0)
+	f = open(file, 'rb')
+	f.seek(sizeToSkip, 0)
 
-    totalSize = 0
-    while (True):
-        readData = f.read(blockSizeToRead)
+	totalSize = 0
+	while (True):
+		readData = f.read(blockSizeToRead)
 
-        if not readData:
-            if totalSize == 0:
-                f.seek(0, 0)
-                continue
-            else:
-                break
+		if not readData:
+			if totalSize == 0:
+				f.seek(0, 0)
+				continue
+			else:
+				break
 
-        totalSize += blockSizeToRead
+		totalSize += blockSizeToRead
 
-        if totalSize > sizeToRead:
-            break
+		if totalSize > sizeToRead:
+			break
 
-        filehash.update(readData)
+		filehash.update(readData)
 
-    hashStr = filehash.hexdigest()
-    f.close()
-    return hashStr
-    '''
+	hashStr = filehash.hexdigest()
+	f.close()
+	return hashStr
+	'''
 
-    '''
-    Private Methods
-    '''
+	'''
+	Private Methods
+	'''
 
 
 def __filterFileListByFileExtension(files, fileExtensions):
-    '''
-    fileExtensions as tuple. example: ('.txt', '.png')
-    '''
-    if fileExtensions is not None:
-        files = filter(lambda s: s.lower().endswith(fileExtensions), files)
-        #files = filter(lambda s: s.endswith(fileExtension), files)
-    return files
+	'''
+	fileExtensions as tuple. example: ('.txt', '.png')
+	'''
+	if fileExtensions is not None:
+		files = filter(lambda s: s.lower().endswith(fileExtensions), files)
+		#files = filter(lambda s: s.endswith(fileExtension), files)
+	return files

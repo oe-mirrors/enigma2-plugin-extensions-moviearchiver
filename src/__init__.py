@@ -23,9 +23,8 @@
 
 from Components.config import config, ConfigSubsection, ConfigNumber, ConfigText, ConfigYesNo, ConfigLocations
 from Tools.Directories import resolveFilename, SCOPE_HDD, SCOPE_PLUGINS
-
 from Components.Language import language
-import gettext
+from gettext import bindtextdomain, dgettext, gettext
 
 #############################################################
 
@@ -36,14 +35,14 @@ PluginLanguagePath = "Extensions/MovieArchiver/locale"
 
 
 def localeInit():
-    gettext.bindtextdomain(PluginLanguageDomain, resolveFilename(SCOPE_PLUGINS, PluginLanguagePath))
+	bindtextdomain(PluginLanguageDomain, resolveFilename(SCOPE_PLUGINS, PluginLanguagePath))
 
 
 def _(txt):
-    if gettext.dgettext(PluginLanguageDomain, txt):
-        return gettext.dgettext(PluginLanguageDomain, txt)
-    else:
-        return gettext.gettext(txt)
+	if dgettext(PluginLanguageDomain, txt):
+		return dgettext(PluginLanguageDomain, txt)
+	else:
+		return gettext(txt)
 
 localeInit()
 language.addCallback(localeInit)
@@ -52,7 +51,7 @@ language.addCallback(localeInit)
 
 
 def printToConsole(msg):
-    print("[MovieArchiver] %s" % msg)
+	print("[MovieArchiver] %s" % msg)
 
 #############################################################
 
@@ -67,7 +66,7 @@ config.plugins.MovieArchiver.showLimitReachedNotification = ConfigYesNo(default=
 # default hdd
 defaultDir = resolveFilename(SCOPE_HDD)
 if config.movielist.videodirs.getValue() and len(config.movielist.videodirs.getValue()) > 0:
-    defaultDir = config.movielist.videodirs.getValue()[0]
+	defaultDir = config.movielist.videodirs.getValue()[0]
 
 config.plugins.MovieArchiver.sourcePath = ConfigText(default=defaultDir, fixed_size=False, visible_width=30)
 config.plugins.MovieArchiver.sourcePath.lastValue = config.plugins.MovieArchiver.sourcePath.getValue()
@@ -89,19 +88,19 @@ config.plugins.MovieArchiver.targetLimit = ConfigNumber(default=30)
 
 
 def getSourcePath():
-    return config.plugins.MovieArchiver.sourcePath
+	return config.plugins.MovieArchiver.sourcePath
 
 
 def getSourcePathValue():
-    return getSourcePath().getValue()
+	return getSourcePath().getValue()
 
 
 def getTargetPath():
-    return config.plugins.MovieArchiver.targetPath
+	return config.plugins.MovieArchiver.targetPath
 
 
 def getTargetPathValue():
-    return getTargetPath().getValue()
+	return getTargetPath().getValue()
 
 #############################################################
 

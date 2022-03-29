@@ -31,85 +31,85 @@ from Tools import Notifications
 
 
 class NotificationController(object):
-    '''
-    classdocs
-    '''
-    instance = None
+	'''
+	classdocs
+	'''
+	instance = None
 
-    def __init__(self):
-        '''
-        Constructor
-        '''
-        self.view = None
-        self.showUIMessage = None
-        self.movieManager = MovieManager()
-        self.recordNotification = RecordNotification()
+	def __init__(self):
+		'''
+		Constructor
+		'''
+		self.view = None
+		self.showUIMessage = None
+		self.movieManager = MovieManager()
+		self.recordNotification = RecordNotification()
 
-    @staticmethod
-    def getInstance():
-        if NotificationController.instance is None:
-            NotificationController.instance = NotificationController()
-        return NotificationController.instance
+	@staticmethod
+	def getInstance():
+		if NotificationController.instance is None:
+			NotificationController.instance = NotificationController()
+		return NotificationController.instance
 
-    def setView(self, view):
-        self.view = view
+	def setView(self, view):
+		self.view = view
 
-    def getView(self):
-        return self.view
+	def getView(self):
+		return self.view
 
-    def start(self):
-        if config.plugins.MovieArchiver.enabled.value and self.recordNotification.isActive() == False:
-            addEventListener(RECORD_FINISHED, self.__recordFinishedHandler)
-            self.recordNotification.startTimer()
+	def start(self):
+		if config.plugins.MovieArchiver.enabled.value and self.recordNotification.isActive() == False:
+			addEventListener(RECORD_FINISHED, self.__recordFinishedHandler)
+			self.recordNotification.startTimer()
 
-    def stop(self):
-        removeEventListener(RECORD_FINISHED, self.__recordFinishedHandler)
-        self.recordNotification.stopTimer()
+	def stop(self):
+		removeEventListener(RECORD_FINISHED, self.__recordFinishedHandler)
+		self.recordNotification.stopTimer()
 
-    def startArchiving(self, showUIMessage=False):
-        self.showUIMessage = showUIMessage
+	def startArchiving(self, showUIMessage=False):
+		self.showUIMessage = showUIMessage
 
-        if self.showUIMessage == True:
-            addEventListener(QUEUE_FINISHED, self.__queueFinishedHandler)
-        else:
-            removeEventListener(QUEUE_FINISHED, self.__queueFinishedHandler)
+		if self.showUIMessage == True:
+			addEventListener(QUEUE_FINISHED, self.__queueFinishedHandler)
+		else:
+			removeEventListener(QUEUE_FINISHED, self.__queueFinishedHandler)
 
-        addEventListener(INFO_MSG, self.__infoMsgHandler)
+		addEventListener(INFO_MSG, self.__infoMsgHandler)
 
-        self.movieManager.startArchiving()
+		self.movieManager.startArchiving()
 
-    def stopArchiving(self):
-        self.movieManager.stopArchiving()
-        self.showMessage(_("MovieArchiver: Stop Archiving."), 5)
+	def stopArchiving(self):
+		self.movieManager.stopArchiving()
+		self.showMessage(_("MovieArchiver: Stop Archiving."), 5)
 
-    def isArchiving(self):
-        '''
-        returns true if currently archiving or backup is running
-        '''
-        return self.movieManager.running()
+	def isArchiving(self):
+		'''
+		returns true if currently archiving or backup is running
+		'''
+		return self.movieManager.running()
 
-    def showMessage(self, msg, timeout=10):
-        if self.view is not None:
-            self.view.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout)
-        else:
-            Notifications.AddNotification(MessageBox, msg, type=MessageBox.TYPE_INFO, timeout=timeout)
+	def showMessage(self, msg, timeout=10):
+		if self.view is not None:
+			self.view.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout)
+		else:
+			Notifications.AddNotification(MessageBox, msg, type=MessageBox.TYPE_INFO, timeout=timeout)
 
-    '''
-    Private Methods
-    '''
+	'''
+	Private Methods
+	'''
 
-    def __recordFinishedHandler(self):
-        printToConsole("recordFinished")
-        self.startArchiving()
+	def __recordFinishedHandler(self):
+		printToConsole("recordFinished")
+		self.startArchiving()
 
-    def __queueFinishedHandler(self, hasArchiveMovies):
-        if hasArchiveMovies == True:
-            self.showMessage(_("MovieArchiver: Archiving finished."), 5)
-        else:
-            self.showMessage(_("MovieArchiver: Movies already archived."), 5)
+	def __queueFinishedHandler(self, hasArchiveMovies):
+		if hasArchiveMovies == True:
+			self.showMessage(_("MovieArchiver: Archiving finished."), 5)
+		else:
+			self.showMessage(_("MovieArchiver: Movies already archived."), 5)
 
-    def __infoMsgHandler(self, msg, timeout=10):
-        if self.showUIMessage == True:
-            self.showMessage(msg, timeout)
-        else:
-            printToConsole(msg)
+	def __infoMsgHandler(self, msg, timeout=10):
+		if self.showUIMessage == True:
+			self.showMessage(msg, timeout)
+		else:
+			printToConsole(msg)
