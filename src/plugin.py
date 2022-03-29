@@ -22,10 +22,8 @@
 #######################################################################
 
 from Plugins.Plugin import PluginDescriptor
-
-import sys
-import traceback
-
+from sys import exc_info, stdout
+from traceback import print_exception
 from .MovieArchiverView import MovieArchiverView
 from .NotificationController import NotificationController
 from . import _, printToConsole
@@ -38,34 +36,34 @@ notificationController = None
 
 
 def autostart(reason, **kwargs):
-	global notificationController
-	# Startup
-	if reason == 0:
-		try:
-			notificationController = NotificationController.getInstance()
-			notificationController.start()
-		except Exception as e:
-			printToConsole("Autostart exception " + str(e))
-			exc_type, exc_value, exc_traceback = sys.exc_info()
-			traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stdout)
+    global notificationController
+    # Startup
+    if reason == 0:
+        try:
+            notificationController = NotificationController.getInstance()
+            notificationController.start()
+        except Exception as e:
+            printToConsole("Autostart exception " + str(e))
+            exc_type, exc_value, exc_traceback = exc_info()
+            print_exception(exc_type, exc_value, exc_traceback, file=stdout)
 
-	# Shutdown
-	elif reason == 1:
-		# Stop NotificationController
-		if notificationController is not None:
-			notificationController.stop()
-			notificationController = None
+    # Shutdown
+    elif reason == 1:
+        # Stop NotificationController
+        if notificationController is not None:
+            notificationController.stop()
+            notificationController = None
 
 #############################################################
 
 
 def main(session, **kwargs):
-	session.open(MovieArchiverView)
+    session.open(MovieArchiverView)
 
 
 def Plugins(**kwargs):
-	pluginList = [
-		PluginDescriptor(where=PluginDescriptor.WHERE_AUTOSTART, fnc=autostart, needsRestart=False),
-		PluginDescriptor(name="MovieArchiver", description=_("Archive or backup your movies"), where=PluginDescriptor.WHERE_PLUGINMENU, icon="plugin.png", fnc=main, needsRestart=False)
-	]
-	return pluginList
+    pluginList = [
+        PluginDescriptor(where=PluginDescriptor.WHERE_AUTOSTART, fnc=autostart, needsRestart=False),
+        PluginDescriptor(name="MovieArchiver", description=_("Archive or backup your movies"), where=PluginDescriptor.WHERE_PLUGINMENU, icon="plugin.png", fnc=main, needsRestart=False)
+    ]
+    return pluginList

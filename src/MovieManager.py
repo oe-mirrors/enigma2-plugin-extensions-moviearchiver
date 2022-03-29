@@ -22,18 +22,17 @@
 #
 #######################################################################
 
-import os
-
+from os import path, makedirs
 from time import time
 from pipes import quote
+from six import iteritems
 from collections import deque
 from enigma import eConsoleAppContainer
-import NavigationInstance
-
 from Components.config import config
 from .DiskUtils import pathIsWriteable, reachedLimit, getFiles, checkReachedLimitIfMoveFile, mountpoint, getFilesWithNameKey, getFileHash
 from .EventDispatcher import dispatchEvent
 from . import _, printToConsole, getSourcePathValue, getTargetPathValue
+import NavigationInstance
 
 # Events
 QUEUE_FINISHED = "queueFinished"
@@ -54,202 +53,202 @@ DEFAULT_EXCLUDED_DIRNAMES = [".Trash", "trashcan"]
 
 
 class MovieManager(object):
-    '''
-    classdocs
-    '''
+	'''
+	classdocs
+	'''
 
-    def __init__(self):
-        '''
-        Constructor
-        '''
-        self.execCommand = ""
-        self.executionQueueList = deque()
-        self.executionQueueListInProgress = False
-        self.console = eConsoleAppContainer()
-        self.console.appClosed.append(self.__runFinished)
+	def __init__(self):
+		'''
+		Constructor
+		'''
+		self.execCommand = ""
+		self.executionQueueList = deque()
+		self.executionQueueListInProgress = False
+		self.console = eConsoleAppContainer()
+		self.console.appClosed.append(self.__runFinished)
 
-    def running(self):
-        return self.executionQueueListInProgress
+	def running(self):
+		return self.executionQueueListInProgress
 
-    def startArchiving(self):
-        if mountpoint(getSourcePathValue()) == mountpoint(getTargetPathValue()):
-            dispatchEvent(INFO_MSG, _("Stop archiving!! Can't archive movies to the same hard drive!! Please change the paths in the MovieArchiver settings."), 10)
-            return
+	def startArchiving(self):
+		if mountpoint(getSourcePathValue()) == mountpoint(getTargetPathValue()):
+			dispatchEvent(INFO_MSG, _("Stop archiving!! Can't archive movies to the same hard drive!! Please change the paths in the MovieArchiver settings."), 10)
+			return
 
-        if config.plugins.MovieArchiver.skipDuringRecords.getValue() and self.isRecordingStartInNextTime():
-            dispatchEvent(INFO_MSG, _("Skip archiving. A record is running or start in the next minutes."), 10)
-            return
+		if config.plugins.MovieArchiver.skipDuringRecords.getValue() and self.isRecordingStartInNextTime():
+			dispatchEvent(INFO_MSG, _("Skip archiving. A record is running or start in the next minutes."), 10)
+			return
 
-        if reachedLimit(getTargetPathValue(), config.plugins.MovieArchiver.targetLimit.getValue()):
-            msg = _("Stop archiving! Can't archive movie because archive-harddisk limit reached!")
+		if reachedLimit(getTargetPathValue(), config.plugins.MovieArchiver.targetLimit.getValue()):
+			msg = _("Stop archiving! Can't archive movie because archive-harddisk limit reached!")
 
-            printToConsole(msg)
+			printToConsole(msg)
 
-            if config.plugins.MovieArchiver.showLimitReachedNotification.getValue():
-                dispatchEvent(INFO_MSG, msg, 20)
+			if config.plugins.MovieArchiver.showLimitReachedNotification.getValue():
+				dispatchEvent(INFO_MSG, msg, 20)
 
-            return
+			return
 
-        if config.plugins.MovieArchiver.backup.getValue():
-            self.backupFiles(getSourcePathValue(), getTargetPathValue())
-        else:
-            self.archiveMovies()
+		if config.plugins.MovieArchiver.backup.getValue():
+			self.backupFiles(getSourcePathValue(), getTargetPathValue())
+		else:
+			self.archiveMovies()
 
-    def stopArchiving(self):
-        '''
-        current move or copy process doesnt canceled.
-        only queue is cleared
-        '''
-        if self.running():
-            self.__clearExecutionQueueList()
+	def stopArchiving(self):
+		'''
+		current move or copy process doesnt canceled.
+		only queue is cleared
+		'''
+		if self.running():
+			self.__clearExecutionQueueList()
 
-    def archiveMovies(self):
-        '''
-        archiving movies
-        '''
+	def archiveMovies(self):
+		'''
+		archiving movies
+		'''
 
-        tries = 0
-        moviesFileSize = 0
+		tries = 0
+		moviesFileSize = 0
 
-        if reachedLimit(getSourcePathValue(), config.plugins.MovieArchiver.sourceLimit.getValue()):
-            files = getFiles(getSourcePathValue(), MOVIE_EXTENSION_TO_ARCHIVE)
-            if files is not None:
-                for file in files:
-                    moviesFileSize += os.path.getsize(file) / 1024 / 1024
+		if reachedLimit(getSourcePathValue(), config.plugins.MovieArchiver.sourceLimit.getValue()):
+			files = getFiles(getSourcePathValue(), MOVIE_EXTENSION_TO_ARCHIVE)
+			if files is not None:
+				for file in files:
+					moviesFileSize += path.getsize(file) // 1024 // 1024
 
-                    # Source Disk: check if its enough that we move only this file
-                    breakMoveNext = checkReachedLimitIfMoveFile(getSourcePathValue(), config.plugins.MovieArchiver.sourceLimit.getValue(), moviesFileSize)
+					# Source Disk: check if its enough that we move only this file
+					breakMoveNext = checkReachedLimitIfMoveFile(getSourcePathValue(), config.plugins.MovieArchiver.sourceLimit.getValue(), moviesFileSize)
 
-                    self.addMovieToArchiveQueue(file)
+					self.addMovieToArchiveQueue(file)
 
-                    if breakMoveNext or tries > MAX_TRIES:
-                        break
+					if breakMoveNext or tries > MAX_TRIES:
+						break
 
-                    # Target Disk: check if limit is reached if we move this file
-                    breakMoveNext = checkReachedLimitIfMoveFile(getTargetPathValue(), config.plugins.MovieArchiver.targetLimit.getValue(), moviesFileSize)
+					# Target Disk: check if limit is reached if we move this file
+					breakMoveNext = checkReachedLimitIfMoveFile(getTargetPathValue(), config.plugins.MovieArchiver.targetLimit.getValue(), moviesFileSize)
 
-                    if breakMoveNext == False:
-                        break
+					if breakMoveNext == False:
+						break
 
-                    tries += 1
+					tries += 1
 
-                dispatchEvent(INFO_MSG, _("Start archiving."), 5)
-                self.execQueue()
-        else:
-            dispatchEvent(INFO_MSG, _("limit not reached. Wait for next Event."), 5)
+				dispatchEvent(INFO_MSG, _("Start archiving."), 5)
+				self.execQueue()
+		else:
+			dispatchEvent(INFO_MSG, _("limit not reached. Wait for next Event."), 5)
 
-    def backupFiles(self, sourcePath, targetPath):
-        '''
-        sync files
-        '''
+	def backupFiles(self, sourcePath, targetPath):
+		'''
+		sync files
+		'''
 
-        #check if target path is writable
-        if pathIsWriteable(targetPath) == False:
-            dispatchEvent(INFO_MSG, _("Backup Target Folder is not writable.\nPlease check the permission."), 10)
-            return
+		#check if target path is writable
+		if pathIsWriteable(targetPath) == False:
+			dispatchEvent(INFO_MSG, _("Backup Target Folder is not writable.\nPlease check the permission."), 10)
+			return
 
-        #check if some files to archive available
-        sourceFiles = getFilesWithNameKey(sourcePath, excludedDirNames=DEFAULT_EXCLUDED_DIRNAMES, excludeDirs=config.plugins.MovieArchiver.excludeDirs.getValue())
-        if sourceFiles is None:
-            dispatchEvent(INFO_MSG, _("No files for backup found."), 10)
-            return
+		#check if some files to archive available
+		sourceFiles = getFilesWithNameKey(sourcePath, excludedDirNames=DEFAULT_EXCLUDED_DIRNAMES, excludeDirs=config.plugins.MovieArchiver.excludeDirs.getValue())
+		if sourceFiles is None:
+			dispatchEvent(INFO_MSG, _("No files for backup found."), 10)
+			return
 
-        dispatchEvent(INFO_MSG, _("Backup Archive. Synchronization started"), 5)
+		dispatchEvent(INFO_MSG, _("Backup Archive. Synchronization started"), 5)
 
-        targetFiles = getFilesWithNameKey(targetPath, excludedDirNames=DEFAULT_EXCLUDED_DIRNAMES)
+		targetFiles = getFilesWithNameKey(targetPath, excludedDirNames=DEFAULT_EXCLUDED_DIRNAMES)
 
-        # determine movies to sync and add to queue
-        for sFileName, sFile in sourceFiles.iteritems():
-            if sFileName not in targetFiles:
-                printToConsole("file is new. Add To Archive: " + sFile)
-                self.addFileToBackupQueue(sFile)
-            else:
-                tFile = targetFiles[sFileName]
-                if getFileHash(tFile) != getFileHash(sFile):
-                    printToConsole("file is different. Add to Archive: " + sFile)
-                    self.addFileToBackupQueue(sFile)
+		# determine movies to sync and add to queue
+		for sFileName, sFile in iteritems(sourceFiles):
+			if sFileName not in targetFiles:
+				printToConsole("file is new. Add To Archive: " + sFile)
+				self.addFileToBackupQueue(sFile)
+			else:
+				tFile = targetFiles[sFileName]
+				if getFileHash(tFile) != getFileHash(sFile):
+					printToConsole("file is different. Add to Archive: " + sFile)
+					self.addFileToBackupQueue(sFile)
 
-        if len(self.executionQueueList) < 1:
-            dispatchEvent(QUEUE_FINISHED, False)
-        else:
-            self.execQueue()
+		if len(self.executionQueueList) < 1:
+			dispatchEvent(QUEUE_FINISHED, False)
+		else:
+			self.execQueue()
 
-    def addFileToBackupQueue(self, sourceFile):
-        targetPath = getTargetPathValue()
-        if os.path.isdir(targetPath) and os.path.dirname(sourceFile) != targetPath and pathIsWriteable(targetPath):
-            subFolderPath = sourceFile.replace(getSourcePathValue(), "")
-            targetPathWithSubFolder = os.path.join(targetPath, subFolderPath)
+	def addFileToBackupQueue(self, sourceFile):
+		targetPath = getTargetPathValue()
+		if path.isdir(targetPath) and path.dirname(sourceFile) != targetPath and pathIsWriteable(targetPath):
+			subFolderPath = sourceFile.replace(getSourcePathValue(), "")
+			targetPathWithSubFolder = path.join(targetPath, subFolderPath)
 
-            newExecCommand = 'cp "' + sourceFile + '" "' + targetPathWithSubFolder + '"'
+			newExecCommand = 'cp "' + sourceFile + '" "' + targetPathWithSubFolder + '"'
 
-            # create folders if doesnt exists
-            folder = os.path.dirname(targetPathWithSubFolder)
-            if os.path.exists(folder) == False:
-                os.makedirs(folder)
+			# create folders if doesnt exists
+			folder = path.dirname(targetPathWithSubFolder)
+			if path.exists(folder) == False:
+				makedirs(folder)
 
-            self.__addExecCommandToArchiveQueue(newExecCommand)
+			self.__addExecCommandToArchiveQueue(newExecCommand)
 
-    def addMovieToArchiveQueue(self, sourceMovie):
-        targetPath = getTargetPathValue()
-        if os.path.isdir(targetPath) and os.path.dirname(sourceMovie) != targetPath and pathIsWriteable(targetPath):
-            fileNameWithoutExtension = os.path.splitext(sourceMovie)[0]
+	def addMovieToArchiveQueue(self, sourceMovie):
+		targetPath = getTargetPathValue()
+		if path.isdir(targetPath) and path.dirname(sourceMovie) != targetPath and pathIsWriteable(targetPath):
+			fileNameWithoutExtension = path.splitext(sourceMovie)[0]
 
-            newExecCommand = 'mv "' + fileNameWithoutExtension + '."* "' + targetPath + '"'
+			newExecCommand = 'mv "' + fileNameWithoutExtension + '."* "' + targetPath + '"'
 
-            self.__addExecCommandToArchiveQueue(newExecCommand)
+			self.__addExecCommandToArchiveQueue(newExecCommand)
 
-    def execQueue(self):
-        try:
-            if len(self.executionQueueList) > 0:
-                self.executionQueueListInProgress = True
+	def execQueue(self):
+		try:
+			if len(self.executionQueueList) > 0:
+				self.executionQueueListInProgress = True
 
-                self.execCommand = self.executionQueueList.popleft()
+				self.execCommand = self.executionQueueList.popleft()
 
-                self.console.execute("sh -c " + self.execCommand)
+				self.console.execute("sh -c " + self.execCommand)
 
-                printToConsole("execQueue: Move Movie '" + self.execCommand + "'")
-        except Exception as e:
-            self.__clearExecutionQueueList()
-            printToConsole("execQueue exception:\n" + str(e))
+				printToConsole("execQueue: Move Movie '" + self.execCommand + "'")
+		except Exception as e:
+			self.__clearExecutionQueueList()
+			printToConsole("execQueue exception:\n" + str(e))
 
-    def isRecordingStartInNextTime(self):
-        recordings = len(NavigationInstance.instance.getRecordings())
-        nextRecordingTime = NavigationInstance.instance.RecordTimer.getNextRecordingTime()
+	def isRecordingStartInNextTime(self):
+		recordings = len(NavigationInstance.instance.getRecordings())
+		nextRecordingTime = NavigationInstance.instance.RecordTimer.getNextRecordingTime()
 
-        if not recordings and (((nextRecordingTime - time()) > SECONDS_NEXT_RECORD) or nextRecordingTime < 0):
-            return False
-        else:
-            return True
+		if not recordings and (((nextRecordingTime - time()) > SECONDS_NEXT_RECORD) or nextRecordingTime < 0):
+			return False
+		else:
+			return True
 
-    '''
-    Private Methods
-    '''
+	'''
+	Private Methods
+	'''
 
-    def __clearExecutionQueueList(self):
-        self.execCommand = ""
-        self.executionQueueList = deque()
-        self.executionQueueListInProgress = False
+	def __clearExecutionQueueList(self):
+		self.execCommand = ""
+		self.executionQueueList = deque()
+		self.executionQueueListInProgress = False
 
-    def __runFinished(self, retval=None):
-        try:
-            self.execCommand = ""
+	def __runFinished(self, retval=None):
+		try:
+			self.execCommand = ""
 
-            if len(self.executionQueueList) > 0:
-                self.execQueue()
-            else:
-                printToConsole("Queue finished!")
-                self.executionQueueListInProgress = False
-                dispatchEvent(QUEUE_FINISHED, True)
+			if len(self.executionQueueList) > 0:
+				self.execQueue()
+			else:
+				printToConsole("Queue finished!")
+				self.executionQueueListInProgress = False
+				dispatchEvent(QUEUE_FINISHED, True)
 
-        except Exception as e:
-            self.__clearExecutionQueueList()
+		except Exception as e:
+			self.__clearExecutionQueueList()
 
-            printToConsole("runFinished exception:\n" + str(e))
+			printToConsole("runFinished exception:\n" + str(e))
 
-    def __addExecCommandToArchiveQueue(self, execCommandToAdd):
-        '''
-        add ExecCommand to executionQueueList if not in list
-        '''
-        #if self.execCommand != execCommandToAdd and self.executionQueueList.count(execCommandToAdd) == 0:
-        if self.execCommand != execCommandToAdd and execCommandToAdd not in self.executionQueueList:
-            self.executionQueueList.append(quote(execCommandToAdd))
+	def __addExecCommandToArchiveQueue(self, execCommandToAdd):
+		'''
+		add ExecCommand to executionQueueList if not in list
+		'''
+		#if self.execCommand != execCommandToAdd and self.executionQueueList.count(execCommandToAdd) == 0:
+		if self.execCommand != execCommandToAdd and execCommandToAdd not in self.executionQueueList:
+			self.executionQueueList.append(quote(execCommandToAdd))
