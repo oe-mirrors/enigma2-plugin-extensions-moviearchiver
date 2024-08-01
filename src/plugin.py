@@ -514,7 +514,7 @@ class ExcludeDirsView(Screen):
 			self.dirList.descent()
 
 
-class MovieArchiverView(ConfigListScreen, Screen):
+class MovieArchiverView(MAglobs, ConfigListScreen, Screen):
 	skin = """
 		<screen name="MovieArchiver-Setup" position="center,center" size="1000,500" resolution="1280,720" flags="wfNoBorder" backgroundColor="#90000000">
 			<eLabel name="new eLabel" position="0,0" zPosition="-2" size="630,500" backgroundColor="#20000000" transparent="0" />
@@ -558,7 +558,7 @@ class MovieArchiverView(ConfigListScreen, Screen):
 				self["config"].onSelectionChanged.append(self.__updateHelp)
 		except Exception:
 			self["config"].onSelectionChanged.append(self.__updateHelp)
-		self['config'].l.setItemHeight(int(30 * 1.5 if getDesktop(0).size().height() > 720 else 1.0))
+		self['config'].l.setItemHeight(int(30 * (1.5 if getDesktop(0).size().height() > 720 else 1.0)))
 		self.__updateArchiveNowButtonText()
 		if self.notificationController.isArchiving() == True:
 			self.addEventListener(self.QUEUE_FINISHED, self.__archiveFinished)
