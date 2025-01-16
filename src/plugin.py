@@ -29,6 +29,7 @@ from six import iteritems
 from sys import exc_info, stdout
 from time import time
 from traceback import print_exception
+from twisted.internet.reactor import callInThread
 
 # ENIGMA IMPORTS
 from enigma import getDesktop, eConsoleAppContainer, eTimer
@@ -49,9 +50,9 @@ import NavigationInstance
 from . import printToConsole, getSourcePathValue, getTargetPathValue, getSourcePath, getTargetPath, _  # for localized messages
 
 
-class MAglobs():
-	handler = []
-	notificationController = None
+class MAglobals():
+	HANDLER = []
+	NOTIFICATIONCONTROLLER = None
 	MAX_TRIES = 50  # max tries (movies to move) after startArchiving recursion will end
 	INFO_MSG = "showAlert"  # show message window: body is msg, timeout
 	QUEUE_FINISHED = "queueFinished"
@@ -60,23 +61,28 @@ class MAglobs():
 	DEFAULT_EXCLUDED_DIRNAMES = [".Trash", "trashcan"]
 	RECORD_FINISHED = "recordFinished"
 
+
+maglobals = MAglobals()
+
+
+class MAhelper():
 	def hasEventListener(self, eventType, function):
-		for e in self.handler:
+		for e in maglobals.HANDLER:
 			if e[0] == eventType and e[1] == function:
 				return True
 		return False
 
 	def addEventListener(self, eventType, function):
 		if self.hasEventListener(eventType, function) == False:
-			self.handler.append([eventType, function])
+			maglobals.HANDLER.append([eventType, function])
 
 	def removeEventListener(self, eventType, function):
-		for e in self.handler:
+		for e in maglobals.HANDLER:
 			if e[0] == eventType and e[1] == function:
-				self.handler.remove(e)
+				maglobals.HANDLER.remove(e)
 
 	def dispatchEvent(self, eventType, *arg):
-		for e in self.handler:
+		for e in maglobals.HANDLER:
 			if e[0] == eventType:
 				if (arg is not None and len(arg) > 0):
 					e[1](*arg)
@@ -169,7 +175,7 @@ class MAglobs():
 		files = filter(lambda s: s.lower().endswith(fileExtensions), files) if fileExtensions is not None else files
 
 
-class RecordNotification(MAglobs):
+class RecordNotification(MAhelper):
 	def __init__(self):
 		self.forceBindRecordTimer = None
 
@@ -217,10 +223,10 @@ class RecordNotification(MAglobs):
 			pass
 		elif timer.state == timer.StateEnded or timer.repeated and timer.state == timer.StateWaiting:  # Finished repeating timer will report the state StateEnded+1 or StateWaiting
 			printToConsole("[RecordNotification] record end!")
-			self.dispatchEvent(self.RECORD_FINISHED)  # del timer
+			self.dispatchEvent(maglobals.RECORD_FINISHED)  # del timer
 
 
-class NotificationController(MAglobs, object):  # classdocs
+class NotificationController(MAhelper, object):  # classdocs
 	instance = None
 
 	def __init__(self):  # Constructor
@@ -243,20 +249,20 @@ class NotificationController(MAglobs, object):  # classdocs
 
 	def start(self):
 		if config.plugins.MovieArchiver.enabled.value and self.recordNotification.isActive() == False:
-			self.addEventListener(self.RECORD_FINISHED, self.__recordFinishedHandler)
+			self.addEventListener(maglobals.RECORD_FINISHED, self.__recordFinishedHandler)
 			self.recordNotification.startTimer()
 
 	def stop(self):
-		self.removeEventListener(self.RECORD_FINISHED, self.__recordFinishedHandler)
+		self.removeEventListener(maglobals.RECORD_FINISHED, self.__recordFinishedHandler)
 		self.recordNotification.stopTimer()
 
 	def startArchiving(self, showUIMessage=False):
 		self.showUIMessage = showUIMessage
 		if self.showUIMessage == True:
-			self.addEventListener(self.QUEUE_FINISHED, self.__queueFinishedHandler)
+			self.addEventListener(maglobals.QUEUE_FINISHED, self.__queueFinishedHandler)
 		else:
-			self.removeEventListener(self.QUEUE_FINISHED, self.__queueFinishedHandler)
-		self.addEventListener(self.INFO_MSG, self.__infoMsgHandler)
+			self.removeEventListener(maglobals.QUEUE_FINISHED, self.__queueFinishedHandler)
+		self.addEventListener(maglobals.INFO_MSG, self.__infoMsgHandler)
 		self.movieManager.startArchiving()
 
 	def stopArchiving(self):
@@ -289,7 +295,7 @@ class NotificationController(MAglobs, object):  # classdocs
 			printToConsole(msg)
 
 
-class MovieManager(MAglobs, object):  # classdocs
+class MovieManager(MAhelper, object):  # classdocs
 	def __init__(self):  # Constructor
 		self.execCommand = ""
 		self.executionQueueList = deque()
@@ -302,18 +308,18 @@ class MovieManager(MAglobs, object):  # classdocs
 
 	def startArchiving(self):
 		if self.mountpoint(getSourcePathValue()) == self.mountpoint(getTargetPathValue()):
-			self.dispatchEvent(self.INFO_MSG, _("Stop archiving!\nCan't archive movies to the same hard drive!!\nPlease change the paths in the MovieArchiver settings."), 10)
+			self.dispatchEvent(maglobals.INFO_MSG, _("Stop archiving!\nCan't archive movies to the same hard drive!!\nPlease change the paths in the MovieArchiver settings."), 10)
 			return
 
 		if config.plugins.MovieArchiver.skipDuringRecords.getValue() and self.isRecordingStartInNextTime():
-			self.dispatchEvent(self.INFO_MSG, _("Skip archiving!\nA record is running or start in the next minutes."), 10)
+			self.dispatchEvent(maglobals.INFO_MSG, _("Skip archiving!\nA record is running or start in the next minutes."), 10)
 			return
 
 		if self.reachedLimit(getTargetPathValue(), config.plugins.MovieArchiver.targetLimit.getValue()):
 			msg = _("Stop archiving!\nCan't archive movie because archive-harddisk limit reached!")
 			printToConsole(msg)
 			if config.plugins.MovieArchiver.showLimitReachedNotification.getValue():
-				self.dispatchEvent(self.INFO_MSG, msg, 20)
+				self.dispatchEvent(maglobals.INFO_MSG, msg, 20)
 			return
 
 		if config.plugins.MovieArchiver.backup.getValue():
@@ -329,36 +335,36 @@ class MovieManager(MAglobs, object):  # classdocs
 		tries = 0  # archiving movies
 		moviesFileSize = 0
 		if self.reachedLimit(getSourcePathValue(), config.plugins.MovieArchiver.sourceLimit.getValue()):
-			files = self.getFiles(getSourcePathValue(), self.MOVIE_EXTENSION_TO_ARCHIVE)
+			files = self.getFiles(getSourcePathValue(), maglobals.MOVIE_EXTENSION_TO_ARCHIVE)
 			if files:
 				for file in files:
 					moviesFileSize += getsize(file) // 1024 // 1024
 					# Source Disk: check if its enough that we move only this file
 					breakMoveNext = self.checkReachedLimitIfMoveFile(getSourcePathValue(), config.plugins.MovieArchiver.sourceLimit.getValue(), moviesFileSize)
 					self.addMovieToArchiveQueue(file)
-					if breakMoveNext or tries > self.MAX_TRIES:
+					if breakMoveNext or tries > maglobals.MAX_TRIES:
 						break
 					# Target Disk: check if limit is reached if we move this file
 					breakMoveNext = self.checkReachedLimitIfMoveFile(getTargetPathValue(), config.plugins.MovieArchiver.targetLimit.getValue(), moviesFileSize)
 					if breakMoveNext == False:
 						break
 					tries += 1
-				self.dispatchEvent(self.INFO_MSG, _("Start archiving."), 5)
+				self.dispatchEvent(maglobals.INFO_MSG, _("Start archiving."), 5)
 				self.execQueue()
 		else:
-			self.dispatchEvent(self.INFO_MSG, _("limit not reached. Wait for next Event."), 5)
+			self.dispatchEvent(maglobals.INFO_MSG, _("limit not reached. Wait for next Event."), 5)
 
 	def backupFiles(self, sourcePath, targetPath):
 		if self.pathIsWriteable(targetPath) == False:  # sync files, check if target path is writable
-			self.dispatchEvent(self.INFO_MSG, _("Backup Target Folder is not writable.\nPlease check the permission."), 10)
+			self.dispatchEvent(maglobals.INFO_MSG, _("Backup Target Folder is not writable.\nPlease check the permission."), 10)
 			return
 		#check if some files to archive available
-		sourceFiles = self.getFilesWithNameKey(sourcePath, excludedDirNames=self.DEFAULT_EXCLUDED_DIRNAMES, excludeDirs=config.plugins.MovieArchiver.excludeDirs.getValue())
+		sourceFiles = self.getFilesWithNameKey(sourcePath, excludedDirNames=maglobals.DEFAULT_EXCLUDED_DIRNAMES, excludeDirs=config.plugins.MovieArchiver.excludeDirs.getValue())
 		if sourceFiles is None:
-			self.dispatchEvent(self.INFO_MSG, _("No files for backup found."), 10)
+			self.dispatchEvent(maglobals.INFO_MSG, _("No files for backup found."), 10)
 			return
-		self.dispatchEvent(self.INFO_MSG, _("Backup Archive. Synchronization started"), 5)
-		targetFiles = self.getFilesWithNameKey(targetPath, excludedDirNames=self.DEFAULT_EXCLUDED_DIRNAMES)
+		self.dispatchEvent(maglobals.INFO_MSG, _("Backup Archive. Synchronization started"), 5)
+		targetFiles = self.getFilesWithNameKey(targetPath, excludedDirNames=maglobals.DEFAULT_EXCLUDED_DIRNAMES)
 		for sFileName, sFile in iteritems(sourceFiles):  # determine movies to sync and add to queue
 			if sFileName not in targetFiles:
 				printToConsole("file is new. Add To Archive: " + sFile)
@@ -369,7 +375,7 @@ class MovieManager(MAglobs, object):  # classdocs
 					printToConsole("file is different. Add to Archive: " + sFile)
 					self.addFileToBackupQueue(sFile)
 		if len(self.executionQueueList) < 1:
-			self.dispatchEvent(self.QUEUE_FINISHED, False)
+			self.dispatchEvent(maglobals.QUEUE_FINISHED, False)
 		else:
 			self.execQueue()
 
@@ -396,7 +402,7 @@ class MovieManager(MAglobs, object):  # classdocs
 			if len(self.executionQueueList) > 0:
 				self.executionQueueListInProgress = True
 				self.execCommand = self.executionQueueList.popleft()
-				self.console.execute("sh -c " + self.execCommand)
+				callInThread(self.console.execute("sh -c " + self.execCommand))
 				printToConsole("execQueue: Move Movie '" + self.execCommand + "'")
 		except Exception as e:
 			self.__clearExecutionQueueList()
@@ -420,7 +426,7 @@ class MovieManager(MAglobs, object):  # classdocs
 			else:
 				printToConsole("Queue finished!")
 				self.executionQueueListInProgress = False
-				self.dispatchEvent(self.QUEUE_FINISHED, True)
+				self.dispatchEvent(maglobals.QUEUE_FINISHED, True)
 		except Exception as e:
 			self.__clearExecutionQueueList()
 			printToConsole("runFinished exception:\n" + str(e))
@@ -432,7 +438,7 @@ class MovieManager(MAglobs, object):  # classdocs
 			self.executionQueueList.append(quote(execCommandToAdd))
 
 
-class ExcludeDirsView(Screen):
+class ExcludeDirsView(MAhelper, Screen):
 	skin = """
 		<screen name="ExcludeDirsView" position="center,center" size="560,400" resolution="1280,720" title="Select folders to exclude">
 			<widget name="excludeDirList" position="5,0" size="550,320" transparent="1" scrollbarMode="showOnDemand" />
@@ -514,7 +520,7 @@ class ExcludeDirsView(Screen):
 			self.dirList.descent()
 
 
-class MovieArchiverView(MAglobs, ConfigListScreen, Screen):
+class MovieArchiverView(MAhelper, ConfigListScreen, Screen):
 	skin = """
 		<screen name="MovieArchiver-Setup" position="center,center" size="1000,500" resolution="1280,720" flags="wfNoBorder" backgroundColor="#90000000">
 			<eLabel name="new eLabel" position="0,0" zPosition="-2" size="630,500" backgroundColor="#20000000" transparent="0" />
@@ -541,8 +547,8 @@ class MovieArchiverView(MAglobs, ConfigListScreen, Screen):
 		ConfigListScreen.__init__(self, self.getMenuItemList(), session=session, on_change=self.__changedEntry)
 		self["help"] = StaticText()
 		self["archiveButton"] = StaticText()
-		self.notificationController = NotificationController.getInstance()
-		self.notificationController.setView(self)
+		self.NOTIFICATIONCONTROLLER = NotificationController.getInstance()
+		self.NOTIFICATIONCONTROLLER.setView(self)
 		self["actions"] = ActionMap(["SetupActions",
 							   		"OkCancelActions",
 									"ColorActions"], {"cancel": self.cancel,
@@ -560,8 +566,8 @@ class MovieArchiverView(MAglobs, ConfigListScreen, Screen):
 			self["config"].onSelectionChanged.append(self.__updateHelp)
 		self['config'].l.setItemHeight(int(30 * (1.5 if getDesktop(0).size().height() > 720 else 1.0)))
 		self.__updateArchiveNowButtonText()
-		if self.notificationController.isArchiving() == True:
-			self.addEventListener(self.QUEUE_FINISHED, self.__archiveFinished)
+		if self.NOTIFICATIONCONTROLLER.isArchiving() == True:
+			self.addEventListener(maglobals.QUEUE_FINISHED, self.__archiveFinished)
 		self.onClose.append(self.__onClose)
 
 	def getMenuItemList(self):
@@ -591,10 +597,10 @@ class MovieArchiverView(MAglobs, ConfigListScreen, Screen):
 			return False
 
 	def yellow(self):
-		if self.notificationController.isArchiving() == True:
-			self.notificationController.stopArchiving()
+		if self.NOTIFICATIONCONTROLLER.isArchiving() == True:
+			self.NOTIFICATIONCONTROLLER.stopArchiving()
 		else:
-			self.notificationController.startArchiving(True)
+			self.NOTIFICATIONCONTROLLER.startArchiving(True)
 		self.__updateArchiveNowButtonText()
 
 	def excludedDirsChoosen(self, ret):
@@ -632,9 +638,9 @@ class MovieArchiverView(MAglobs, ConfigListScreen, Screen):
 				x[1].save()
 
 		if config.plugins.MovieArchiver.enabled.getValue():
-			self.notificationController.start()
+			self.NOTIFICATIONCONTROLLER.start()
 		else:
-			self.notificationController.stop()
+			self.NOTIFICATIONCONTROLLER.stop()
 
 		configfile.save()
 		self.close()
@@ -657,7 +663,7 @@ class MovieArchiverView(MAglobs, ConfigListScreen, Screen):
 		self.session.openWithCallback(self.pathSelected, MovieLocationBox, _("Choose folder"), self.getCurrent().getValue(), minFree=100)
 
 	def __updateArchiveNowButtonText(self):  # Private Methods
-		if self.notificationController.isArchiving() == True:
+		if self.NOTIFICATIONCONTROLLER.isArchiving() == True:
 			archiveButtonText = _("Stop Backup") if config.plugins.MovieArchiver.backup.getValue() == True else _("Stop archiving")
 		else:
 			archiveButtonText = _("Backup now!") if config.plugins.MovieArchiver.backup.getValue() == True else _("Archive now!")
@@ -678,23 +684,23 @@ class MovieArchiverView(MAglobs, ConfigListScreen, Screen):
 			self["config"].setList(self.getMenuItemList())
 
 	def __onClose(self):
-		self.notificationController.setView(None)
+		self.NOTIFICATIONCONTROLLER.setView(None)
 
 
 def autostart(reason, **kwargs):  # Autostart
-	global notificationController
+	global NOTIFICATIONCONTROLLER
 	if reason == 0:  # Startup
 		try:
-			notificationController = NotificationController.getInstance()
-			notificationController.start()
+			NOTIFICATIONCONTROLLER = NotificationController.getInstance()
+			NOTIFICATIONCONTROLLER.start()
 		except Exception as e:
 			printToConsole("Autostart exception " + str(e))
 			exc_type, exc_value, exc_traceback = exc_info()
 			print_exception(exc_type, exc_value, exc_traceback, file=stdout)
 	elif reason == 1:  # Shutdown
-		if MAglobs.notificationController is not None:  # Stop NotificationController
-			MAglobs.notificationController.stop()
-			notificationController = None
+		if maglobals.NOTIFICATIONCONTROLLER is not None:  # Stop NotificationController
+			maglobals.NOTIFICATIONCONTROLLER.stop()
+			NOTIFICATIONCONTROLLER = None
 
 
 def main(session, **kwargs):
