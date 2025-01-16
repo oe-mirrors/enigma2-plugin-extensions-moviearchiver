@@ -164,7 +164,7 @@ class MAhelper():
 		freeDiskSpace = self.getFreeDiskspace(mediapath)
 		return True if (freeDiskSpace + moviesFileSize) >= limit * 1024 else False
 
-	def getFileHash(self, file, factor=10, sizeToSkip=104857600):
+	def getFileHash(self, file):
 		# factor, if size is higher, it is faster but need more ram sizeToSkip 104857600 = 100mb
 		# currently, we check only the fileSize because opening files and creating hash are to slow
 		return str(stat(file).st_size)
@@ -411,7 +411,7 @@ class MovieManager(MAhelper, object):  # classdocs
 	def isRecordingStartInNextTime(self):
 		recordings = len(NavigationInstance.instance.getRecordings())
 		nextRecordingTime = NavigationInstance.instance.RecordTimer.getNextRecordingTime()
-		return False if not recordings and (((nextRecordingTime - time()) > self.SECONDS_NEXT_RECORD) or nextRecordingTime < 0) else True
+		return False if not recordings and (((nextRecordingTime - time()) > maglobals.SECONDS_NEXT_RECORD) or nextRecordingTime < 0) else True
 
 	def __clearExecutionQueueList(self):  # Private Methods
 		self.execCommand = ""
