@@ -24,7 +24,7 @@
 from collections import deque
 from os import makedirs, listdir, walk, access, stat, statvfs, W_OK
 from os.path import getmtime, join, basename, isfile, isdir, ismount, islink, realpath, dirname, realpath, exists, splitext, getsize
-from pipes import quote
+from shlex import quote
 from six import iteritems
 from sys import exc_info, stdout
 from time import time
